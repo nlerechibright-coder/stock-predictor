@@ -1,0 +1,187 @@
+﻿{% extends "core/base.html" %}
+{% block title %}Dashboard | Stock Predictor{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Market Dashboard</h1>
+            <p class="text-slate-400 mt-1">Apple Inc. (AAPL) - NASDAQ</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-card p-6 rounded-xl border border-slate-700 shadow-lg">
+            <p class="text-slate-400 text-sm uppercase tracking-wider">Latest Close Price</p>
+            <p class="text-3xl font-bold text-white mt-2">
+                {% if latest_prediction %}
+                    ${{ latest_prediction.day_1_close|floatformat:2 }}
+                {% elif historical_data %}
+                    ${{ historical_data.last.close|floatformat:2 }}
+                {% else %}
+                    $0.00
+                {% endif %}
+            </p>
+            <p class="text-slate-400 text-sm mt-1">
+                {% if latest_prediction %}Predicted Day 1{% else %}Last Historical{% endif %}
+            </p>
+        </div>
+        <div class="bg-card p-6 rounded-xl border border-slate-700 shadow-lg">
+            <p class="text-slate-400 text-sm uppercase tracking-wider">Active Model</p>
+            <p class="text-3xl font-bold text-primary mt-2">
+                {% if latest_prediction %}{{ latest_prediction.model_version }}{% else %}XGBoost{% endif %}
+            </p>
+            <p class="text-slate-400 text-sm mt-1">Ready for Inference</p>
+        </div>
+        <div class="bg-card p-6 rounded-xl border border-slate-700 shadow-lg">
+            <p class="text-slate-400 text-sm uppercase tracking-wider">Prediction History</p>
+            <p class="text-3xl font-bold text-white mt-2">{{ total_predictions|default:0 }}</p>
+            <p class="text-slate-400 text-sm mt-1">Total forecasts generated</p>
+        </div>
+    </div>
+
+    <!-- Action Area -->
+    <div class="bg-card p-8 rounded-xl border border-slate-700 shadow-lg">
+        <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-white mb-4">Generate 5-Day Forecast</h2>
+            <p class="text-slate-400 max-w-2xl mx-auto">
+                Click the button below to use our trained machine learning model to predict the closing prices for the next 5 trading days. 
+                <span class="text-amber-400 text-sm block mt-2">⚠️ Disclaimer: Predictions are estimates based on historical patterns, not guaranteed future prices or investment advice.</span>
+            </p>
+        </div>
+        
+        <form method="POST" action="{% url 'generate_prediction' %}" class="text-center">
+            {% csrf_token %}
+            <button type="submit" class="bg-primary hover:bg-sky-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:scale-105 flex items-center justify-center mx-auto gap-2">
+                <span>🚀</span> Generate Prediction
+            </button>
+        </form>
+    </div>
+
+    <!-- Chart Visualization -->
+    {% if historical_data or latest_prediction %}
+    <div class="bg-card p-6 rounded-xl border border-slate-700 shadow-lg">
+        <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <span class="text-primary">📈</span> Price Trend & Forecast
+        </h3>
+        <div class="relative h-80 w-full">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Forecast Results (Shown if prediction exists) -->
+    {% if latest_prediction %}
+    <div class="bg-card p-8 rounded-xl border border-primary/30 shadow-lg">
+        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <span class="text-primary">📊</span> 5-Day Price Forecast Details
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
+            <div class="bg-darker p-4 rounded-lg border border-slate-700 text-center">
+                <p class="text-slate-400 text-xs uppercase">Day 1</p>
+                <p class="text-lg font-bold text-white mt-1">${{ latest_prediction.day_1_close|floatformat:2 }}</p>
+            </div>
+            <div class="bg-darker p-4 rounded-lg border border-slate-700 text-center">
+                <p class="text-slate-400 text-xs uppercase">Day 2</p>
+                <p class="text-lg font-bold text-white mt-1">${{ latest_prediction.day_2_close|floatformat:2 }}</p>
+            </div>
+            <div class="bg-darker p-4 rounded-lg border border-slate-700 text-center">
+                <p class="text-slate-400 text-xs uppercase">Day 3</p>
+                <p class="text-lg font-bold text-white mt-1">${{ latest_prediction.day_3_close|floatformat:2 }}</p>
+            </div>
+            <div class="bg-darker p-4 rounded-lg border border-slate-700 text-center">
+                <p class="text-slate-400 text-xs uppercase">Day 4</p>
+                <p class="text-lg font-bold text-white mt-1">${{ latest_prediction.day_4_close|floatformat:2 }}</p>
+            </div>
+            <div class="bg-darker p-4 rounded-lg border border-slate-700 text-center">
+                <p class="text-slate-400 text-xs uppercase">Day 5</p>
+                <p class="text-lg font-bold text-white mt-1">${{ latest_prediction.day_5_close|floatformat:2 }}</p>
+            </div>
+        </div>
+        <p class="text-center text-slate-500 text-xs mt-4">
+            Generated on {{ latest_prediction.prediction_date|date:"M d, Y H:i" }} using {{ latest_prediction.model_version }}
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Chart.js Logic -->
+{% if historical_data or latest_prediction %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        
+        // Prepare Historical Data
+        const histLabels = [{% for h in historical_data %}'{{ h.date }}', {% endfor %}];
+        const histPrices = [{% for h in historical_data %}{{ h.close }}, {% endfor %}];
+        
+        // Prepare Prediction Data (pad with nulls to align with historical dates)
+        const predLabels = [...histLabels];
+        const predPrices = new Array(histPrices.length).fill(null);
+        
+        {% if latest_prediction %}
+            // Add prediction days to labels
+            // Note: In a full implementation, we'd pass the exact prediction dates from the engine.
+            // For visualization, we append 5 generic "Day X" labels.
+            predLabels.push('Pred Day 1', 'Pred Day 2', 'Pred Day 3', 'Pred Day 4', 'Pred Day 5');
+            
+            // Bridge the last historical price to the first prediction
+            const lastHistPrice = histPrices[histPrices.length - 1];
+            predPrices.push(lastHistPrice); // Bridge point
+            
+            predPrices.push({{ latest_prediction.day_1_close }});
+            predPrices.push({{ latest_prediction.day_2_close }});
+            predPrices.push({{ latest_prediction.day_3_close }});
+            predPrices.push({{ latest_prediction.day_4_close }});
+            predPrices.push({{ latest_prediction.day_5_close }});
+            
+            // Pad historical prices with nulls for the prediction days
+            histPrices.push(null, null, null, null, null, null);
+        {% endif %}
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: predLabels,
+                datasets: [
+                    {
+                        label: 'Historical Close',
+                        data: histPrices,
+                        borderColor: '#0ea5e9', // Sky blue
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        pointRadius: 2
+                    },
+                    {
+                        label: 'ML Forecast',
+                        data: predPrices,
+                        borderColor: '#f59e0b', // Amber
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        tension: 0.3,
+                        pointRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#cbd5e1' } },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', maxTicksLimit: 10 }, grid: { color: '#334155' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
