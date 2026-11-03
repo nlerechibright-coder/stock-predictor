@@ -1,42 +1,43 @@
-﻿
-import yfinance as yf
-import pandas as pd
-from datetime import datetime
-from core.models import Stock, HistoricalPrice
+﻿from django.db import models
+from django.conf import settings
 
-print("Starting seeding process...")
-stock, _ = Stock.objects.get_or_create(ticker='AAPL', defaults={'name': 'Apple Inc.', 'exchange': 'NASDAQ'})
+class Stock(models.Model):
+    ticker = models.CharField(max_length=10, unique=True)
+    name = models.CharField(max_length=100)
+    exchange = models.CharField(max_length=50)
+    currency = models.CharField(max_length=10, default='USD')
 
-print("Downloading data...")
-data = yf.download('AAPL', period='6mo', interval='1d', progress=False)
+    def __str__(self):
+        return f"{self.ticker} - {self.name}"
 
-# Clear existing data to avoid duplicates
-HistoricalPrice.objects.filter(stock=stock).delete()
+class HistoricalPrice(models.Model):
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='historical_prices')
+    date = models.DateField(unique=True)
+    open_price = models.FloatField()
+    high = models.FloatField()
+    low = models.FloatField()
+    close = models.FloatField()
+    volume = models.BigIntegerField()
 
-count = 0
-for date, row in data.iterrows():
-    try:
-        # Safely extract values, handling potential pandas Series issues
-        o = float(row['Open'].iloc[0] if isinstance(row['Open'], pd.Series) else row['Open'])
-        h = float(row['High'].iloc[0] if isinstance(row['High'], pd.Series) else row['High'])
-        l = float(row['Low'].iloc[0] if isinstance(row['Low'], pd.Series) else row['Low'])
-        c = float(row['Close'].iloc[0] if isinstance(row['Close'], pd.Series) else row['Close'])
-        v = float(row['Volume'].iloc[0] if isinstance(row['Volume'], pd.Series) else row['Volume'])
-        
-        # Convert pandas timestamp to Python date object
-        date_obj = date.date() if isinstance(date, pd.Timestamp) else datetime.strptime(str(date), '%Y-%m-%d').date()
-        
-        HistoricalPrice.objects.create(
-            stock=stock, 
-            date=date_obj, 
-            open_price=o,  # <-- FIXED: Matches your models.py exactly
-            high=h, 
-            low=l, 
-            close=c, 
-            volume=int(v) if pd.notna(v) else 0
-        )
-        count += 1
-    except Exception as e:
-        print(f"Skipping {date}: {e}")
+    class Meta:
+        ordering = ['-date']
 
-print(f"✅ Successfully seeded {count} days of data into Neon!")
+    def __str__(self):
+        return f"{self.stock.ticker} on {self.date}: ${self.close:.2f}"
+
+class PredictionRecord(models.Model):
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='predictions')
+    prediction_date = models.DateTimeField(auto_now_add=True)
+    model_version = models.CharField(max_length=50)
+    day_1_close = models.FloatField()
+    day_2_close = models.FloatField()
+    day_3_close = models.FloatField()
+    day_4_close = models.FloatField()
+    day_5_close = models.FloatField()
+    mae_at_time = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-prediction_date']
+
+    def __str__(self):
+        return f"Prediction for {self.stock.ticker} on {self.prediction_date.strftime('%Y-%m-%d %H:%M')}"
