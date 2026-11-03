@@ -74,9 +74,15 @@
     <!-- Latest Prediction Results -->
     {% if latest_prediction %}
     <div class="mb-8 p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
-        <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold text-white">Latest 5-Day Forecast</h2>
-            <span class="text-sm text-gray-400">Generated: {{ latest_prediction.prediction_date|date:"M d, Y H:i" }}</span>
+            <div class="flex items-center gap-3">
+                <span class="text-sm text-gray-400">Generated: {{ latest_prediction.prediction_date|date:"M d, Y H:i" }}</span>
+                <a href="{% url 'export_prediction_pdf' latest_prediction.id %}" class="inline-flex items-center px-3 py-1.5 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-800 transition-colors">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Export PDF
+                </a>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-700">
@@ -192,3 +198,4 @@
     });
 </script>
 {% endblock %}
+

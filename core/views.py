@@ -1,12 +1,15 @@
-﻿from django.shortcuts import render, redirect
+﻿from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.http import HttpResponse
 import os
 import joblib
 from datetime import datetime
+from io import BytesIO
+from xhtml2pdf import pisa
 from .prediction_engine import generate_5_day_forecast
 from .models import PredictionRecord, Stock, HistoricalPrice
 
@@ -64,7 +67,6 @@ def prediction_history(request):
     return render(request, 'core/history.html', {'records': records})
 
 def methodology(request):
-    # Dynamically read actual model metadata from artifacts
     artifacts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ml_pipeline', 'artifacts')
     model_path = os.path.join(artifacts_dir, 'best_model.joblib')
     features_path = os.path.join(artifacts_dir, 'feature_cols.joblib')
@@ -80,11 +82,8 @@ def methodology(request):
     
     try:
         if os.path.exists(model_path):
-            # Get actual file modification date as last training date
             mtime = os.path.getmtime(model_path)
             model_info['last_training_date'] = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
-            
-            # Load model to get actual algorithm name
             model = joblib.load(model_path)
             model_info['algorithm'] = type(model).__name__
         
@@ -95,6 +94,44 @@ def methodology(request):
         model_info['error'] = str(e)
         
     return render(request, 'core/methodology.html', {'model_info': model_info})
+
+@login_required
+def export_prediction_pdf(request, record_id):
+    record = get_object_or_404(PredictionRecord, id=record_id)
+    stock = record.stock
+    
+    # Get the latest historical observation date used for this prediction
+    # (Approximated as the date just before the prediction was generated)
+    latest_history = HistoricalPrice.objects.filter(
+        stock=stock, 
+        date__lt=record.prediction_date
+    ).order_by('-date').first()
+    
+    context = {
+        'record': record,
+        'stock': stock,
+        'latest_observation_date': latest_history.date if latest_history else 'N/A',
+        'starting_price': latest_history.close if latest_history else 0.0,
+        'generation_date': record.prediction_date.strftime('%Y-%m-%d %H:%M'),
+        'model_info': {
+            'algorithm': 'XGBoost / RandomForest', # Fallback based on existing logic
+            'version': record.model_version
+        }
+    }
+    
+    # Render HTML to string
+    html = render(request, 'core/prediction_report.html', context).content.decode('utf-8')
+    
+    # Convert to PDF
+    result = BytesIO()
+    pdf = pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
+    
+    if not pdf.err:
+        response = HttpResponse(result.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Stock_Forecast_{stock.ticker}_{record.id}.pdf"'
+        return response
+    
+    return HttpResponse('Error generating PDF', status=500)
 
 def user_login(request):
     if request.method == 'POST':
