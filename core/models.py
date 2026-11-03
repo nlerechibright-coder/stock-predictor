@@ -1,8 +1,4 @@
-﻿import os
-import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'stock_project.settings')
-django.setup()
-
+﻿
 import yfinance as yf
 import pandas as pd
 from datetime import datetime
