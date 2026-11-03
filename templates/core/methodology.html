@@ -1,63 +1,82 @@
-﻿{% extends "core/base.html" %}
-{% block title %}System Architecture | Stock Predictor{% endblock %}
+﻿{% extends 'core/base.html' %}
 
 {% block content %}
-<div class="space-y-8 max-w-4xl mx-auto">
-    <div>
-        <h1 class="text-3xl font-bold text-white">System Architecture & Methodology</h1>
-        <p class="text-slate-400 mt-2">Technical overview of the forecasting engine and data pipeline.</p>
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Header -->
+    <div class="mb-8 border-b border-gray-700 pb-4">
+        <h1 class="text-3xl font-bold text-white">Model Information & Transparency</h1>
+        <p class="mt-2 text-gray-400">Academic and technical details regarding the machine learning forecasting engine.</p>
     </div>
 
-    <!-- Data Pipeline -->
-    <div class="bg-card p-6 rounded-xl border border-slate-700 shadow-lg">
-        <h2 class="text-xl font-bold text-primary mb-3">1. Data Pipeline & Ingestion</h2>
-        <p class="text-slate-300 mb-3">The system ingests daily historical market data for Apple Inc. (AAPL) via the <code class="bg-darker px-2 py-1 rounded text-sm">yfinance</code> API. The dataset encompasses Open, High, Low, Close, and Volume metrics over a 5-year rolling window.</p>
-        <ul class="list-disc list-inside text-slate-400 space-y-1 text-sm">
-            <li><strong>Validation:</strong> Automated checks remove missing values, adjust for stock splits, and eliminate duplicate timestamps.</li>
-            <li><strong>Temporal Integrity:</strong> Data is strictly ordered chronologically to prevent look-ahead bias and temporal data leakage.</li>
-        </ul>
-    </div>
+    <!-- Model Metadata Panel -->
+    <div class="mb-8 p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center">
+            <svg class="w-6 h-6 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+            Active Model Specifications
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Left Column: Core Specs -->
+            <div class="space-y-4">
+                <div class="p-4 rounded-lg bg-gray-900/50 border border-gray-700">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Algorithm</span>
+                    <p class="text-lg font-medium text-white mt-1">{{ model_info.algorithm }}</p>
+                </div>
+                <div class="p-4 rounded-lg bg-gray-900/50 border border-gray-700">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Model Version</span>
+                    <p class="text-lg font-medium text-white mt-1">{{ model_info.version }}</p>
+                </div>
+                <div class="p-4 rounded-lg bg-gray-900/50 border border-gray-700">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Forecast Horizon</span>
+                    <p class="text-lg font-medium text-white mt-1">{{ model_info.forecast_horizon }} Trading Days</p>
+                </div>
+                <div class="p-4 rounded-lg bg-gray-900/50 border border-gray-700">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Data Source</span>
+                    <p class="text-lg font-medium text-white mt-1">{{ model_info.data_source }}</p>
+                </div>
+            </div>
 
-    <!-- Feature Engineering -->
-    <div class="bg-card p-6 rounded-xl border border-slate-700 shadow-lg">
-        <h2 class="text-xl font-bold text-primary mb-3">2. Quantitative Feature Engineering</h2>
-        <p class="text-slate-300 mb-3">Raw market data is transformed into technical indicators to capture market momentum, volatility, and trend direction:</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div class="bg-darker p-3 rounded border border-slate-700">
-                <p class="text-white font-bold">Moving Averages (MA_7, MA_30)</p>
-                <p class="text-slate-400">Smooths price action to identify macro and micro trend directions.</p>
-            </div>
-            <div class="bg-darker p-3 rounded border border-slate-700">
-                <p class="text-white font-bold">Daily Returns & Volatility</p>
-                <p class="text-slate-400">Captures the percentage change and standard deviation of risk.</p>
-            </div>
-            <div class="bg-darker p-3 rounded border border-slate-700">
-                <p class="text-white font-bold">Autoregressive Lags (Lag_1 to Lag_3)</p>
-                <p class="text-slate-400">Previous closing prices used as sequential inputs for time-series forecasting.</p>
-            </div>
-            <div class="bg-darker p-3 rounded border border-slate-700">
-                <p class="text-white font-bold">Z-Score Standardization</p>
-                <p class="text-slate-400">Normalizes all features to a mean of 0 and variance of 1 for model stability.</p>
+            <!-- Right Column: Training Info -->
+            <div class="space-y-4">
+                <div class="p-4 rounded-lg bg-gray-900/50 border border-gray-700">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Last Training Date</span>
+                    <p class="text-lg font-medium text-white mt-1">{{ model_info.last_training_date }}</p>
+                </div>
+                <div class="p-4 rounded-lg bg-gray-900/50 border border-gray-700">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Features Used ({{ model_info.features|length }})</span>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        {% for feature in model_info.features %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-900/50 text-indigo-300 border border-indigo-700">
+                                {{ feature }}
+                            </span>
+                        {% empty %}
+                            <span class="text-sm text-gray-500">Feature list unavailable.</span>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Model Architecture -->
-    <div class="bg-card p-6 rounded-xl border border-slate-700 shadow-lg">
-        <h2 class="text-xl font-bold text-primary mb-3">3. Machine Learning Engine</h2>
-        <p class="text-slate-300 mb-3">The core forecasting engine utilizes an <strong class="text-white">XGBoost Regressor</strong> (Extreme Gradient Boosting). XGBoost is deployed for its superior ability to model non-linear relationships and complex interactions within tabular financial data.</p>
-        <ul class="list-disc list-inside text-slate-400 space-y-1 text-sm">
-            <li><strong>Training Protocol:</strong> 80/20 chronological split. No random shuffling is used to maintain temporal sequence.</li>
-            <li><strong>Evaluation Metrics:</strong> Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), and Directional Accuracy.</li>
-            <li><strong>Inference Strategy:</strong> The model executes <em>autoregressive multi-step forecasting</em>, predicting Day 1, appending the output to the feature set, and iterating to Day 5.</li>
-        </ul>
+    <!-- Academic Disclaimer -->
+    <div class="p-5 rounded-xl border bg-yellow-900/20 border-yellow-700/50 shadow-lg">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Important Prediction Disclaimer</h3>
+                <p class="mt-2 text-sm text-yellow-200/80 leading-relaxed">
+                    The forecasts generated by this system are statistical estimates produced by a machine learning model trained on historical market observations. 
+                    <strong class="text-yellow-300">They do not guarantee future stock prices or market performance.</strong> 
+                    Financial markets are influenced by unpredictable macroeconomic events, corporate actions, and investor sentiment that cannot be fully captured by historical price data alone. This tool is intended for educational, academic, and analytical purposes only, and should not be used as the sole basis for financial investment decisions.
+                </p>
+            </div>
+        </div>
     </div>
 
-    <!-- Professional Disclaimer -->
-    <div class="bg-slate-800 border border-slate-600 p-4 rounded-lg">
-        <p class="text-slate-300 text-sm">
-            <strong>⚠️ Financial Disclaimer:</strong> The forecasts generated by this system are statistical estimates derived from historical market patterns. Financial markets are subject to unpredictable macroeconomic events, regulatory changes, and market sentiment. This tool is designed for analytical and informational purposes only and does not constitute financial, investment, or trading advice.
-        </p>
-    </div>
 </div>
 {% endblock %}

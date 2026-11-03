@@ -6,6 +6,7 @@ class Stock(models.Model):
     name = models.CharField(max_length=100)
     exchange = models.CharField(max_length=50)
     currency = models.CharField(max_length=10, default='USD')
+    last_data_sync = models.DateTimeField(null=True, blank=True, help_text="When this stock's data was last successfully retrieved")
 
     def __str__(self):
         return f"{self.ticker} - {self.name}"
