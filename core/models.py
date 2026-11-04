@@ -61,3 +61,21 @@ class PredictionRecord(models.Model):
 
     def __str__(self):
         return f"Prediction for {self.stock.ticker} on {self.prediction_date.strftime('%Y-%m-%d %H:%M')}"
+
+class PredictionObservation(models.Model):
+    """Tracks individual days within a 5-day forecast for performance evaluation."""
+    prediction_record = models.ForeignKey(PredictionRecord, on_delete=models.CASCADE, related_name='observations')
+    forecast_date = models.DateField()
+    predicted_close = models.FloatField()
+    actual_close = models.FloatField(null=True, blank=True)
+    absolute_error = models.FloatField(null=True, blank=True)
+    percentage_error = models.FloatField(null=True, blank=True)
+    is_evaluated = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['forecast_date']
+        unique_together = ('prediction_record', 'forecast_date')
+
+    def __str__(self):
+        status = "Evaluated" if self.is_evaluated else "Pending"
+        return f"{self.forecast_date}: {status}"

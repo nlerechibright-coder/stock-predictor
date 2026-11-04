@@ -41,6 +41,7 @@
                             <a href="{% url 'prediction_history' %}" class="text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">History</a>
                             <a href="{% url 'methodology' %}" class="text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Methodology</a>
                             
+                            <a href="{% url 'performance_tracking' %}" class="text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Performance</a>
                             <!-- FEATURE 4: Admin Only Link -->
                             {% if user.is_staff %}
                             <a href="{% url 'model_management' %}" class="bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800 border border-indigo-700 px-3 py-2 rounded-md text-sm font-medium flex items-center transition-colors">
@@ -90,3 +91,4 @@
 
 </body>
 </html>
+

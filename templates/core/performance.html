@@ -1,0 +1,98 @@
+﻿{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <div class="mb-8 border-b border-gray-700 pb-4">
+        <h1 class="text-3xl font-bold text-white">Prediction Performance Tracking</h1>
+        <p class="mt-2 text-gray-400">Evaluating forecast accuracy against actual market observations.</p>
+    </div>
+
+    <!-- Metric Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Mean Absolute Error (MAE)</h3>
+            <p class="mt-2 text-3xl font-bold text-white">${{ mae }}</p>
+            <p class="text-sm text-gray-500 mt-1">Avg. price deviation</p>
+        </div>
+        <div class="p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Root Mean Squared Error (RMSE)</h3>
+            <p class="mt-2 text-3xl font-bold text-white">${{ rmse }}</p>
+            <p class="text-sm text-gray-500 mt-1">Penalizes large errors</p>
+        </div>
+        <div class="p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Avg. Percentage Error</h3>
+            <p class="mt-2 text-3xl font-bold text-white">{{ avg_pe }}%</p>
+            <p class="text-sm text-gray-500 mt-1">Relative accuracy</p>
+        </div>
+        <div class="p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Directional Accuracy</h3>
+            <p class="mt-2 text-3xl font-bold text-indigo-400">{{ dir_accuracy }}%</p>
+            <p class="text-sm text-gray-500 mt-1">Correct trend predictions</p>
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    {% if chart_data %}
+    <div class="p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg mb-8">
+        <h2 class="text-xl font-bold text-white mb-4">Predicted vs. Actual Prices (Latest Evaluated Forecast)</h2>
+        <div class="relative h-80 w-full">
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+    {% else %}
+    <div class="p-6 rounded-xl border bg-yellow-900/20 border-yellow-700 shadow-lg mb-8">
+        <p class="text-yellow-300">No evaluated predictions yet. Generate a forecast and wait for the forecast dates to pass to see performance metrics.</p>
+    </div>
+    {% endif %}
+
+    <!-- Summary -->
+    <div class="p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
+        <h2 class="text-xl font-bold text-white mb-4">Evaluation Summary</h2>
+        <p class="text-gray-300">Total individual trading days evaluated: <span class="font-bold text-white">{{ evaluated_count }}</span></p>
+        <p class="text-sm text-gray-500 mt-2 italic">Note: Metrics are calculated only for forecast dates that have already passed and have corresponding actual market data in the database.</p>
+    </div>
+
+</div>
+
+{% if chart_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        const data = {{ chart_data|safe }};
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.date),
+                datasets: [
+                    {
+                        label: 'Predicted Price',
+                        data: data.map(d => d.predicted),
+                        borderColor: '#818cf8',
+                        backgroundColor: 'rgba(129, 140, 248, 0.1)',
+                        borderWidth: 2, tension: 0.3, fill: false
+                    },
+                    {
+                        label: 'Actual Price',
+                        data: data.map(d => d.actual),
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        borderWidth: 2, tension: 0.3, fill: false, borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#d1d5db' } } },
+                scales: {
+                    x: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } },
+                    y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af', callback: function(v) { return '$' + v.toFixed(2); } } }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
