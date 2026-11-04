@@ -26,6 +26,25 @@ class HistoricalPrice(models.Model):
     def __str__(self):
         return f"{self.stock.ticker} on {self.date}: ${self.close:.2f}"
 
+class ModelVersion(models.Model):
+    version_name = models.CharField(max_length=50, unique=True)
+    algorithm = models.CharField(max_length=100)
+    training_date = models.DateTimeField()
+    dataset_start = models.DateField()
+    dataset_end = models.DateField()
+    num_records = models.IntegerField()
+    evaluation_metrics = models.TextField(help_text="JSON or text summary of MAE, RMSE, etc.")
+    artifact_path = models.CharField(max_length=255, default='ml_pipeline/artifacts/best_model.joblib')
+    is_active = models.BooleanField(default=False, help_text="Only one model should be active at a time")
+
+    class Meta:
+        ordering = ['-training_date']
+        verbose_name = "Model Version"
+        verbose_name_plural = "Model Versions"
+
+    def __str__(self):
+        return f"{self.version_name} ({'Active' if self.is_active else 'Inactive'})"
+
 class PredictionRecord(models.Model):
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='predictions')
     prediction_date = models.DateTimeField(auto_now_add=True)

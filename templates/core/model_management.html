@@ -1,0 +1,98 @@
+﻿{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Header -->
+    <div class="mb-8 border-b border-gray-700 pb-4">
+        <h1 class="text-3xl font-bold text-white">Administrator Model Management</h1>
+        <p class="mt-2 text-gray-400">View, inspect, and safely activate machine learning model versions.</p>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-lg border {% if message.tags == 'success' %}bg-green-900/50 border-green-700 text-green-300{% else %}bg-red-900/50 border-red-700 text-red-300{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Active Model Highlight -->
+    {% if active_model %}
+    <div class="mb-8 p-6 rounded-xl border bg-green-900/20 border-green-700 shadow-lg">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-green-300 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Currently Active Model
+                </h2>
+                <p class="mt-2 text-gray-300"><span class="font-semibold">Version:</span> {{ active_model.version_name }} | <span class="font-semibold">Algorithm:</span> {{ active_model.algorithm }}</p>
+                <p class="text-sm text-gray-400 mt-1">Trained on: {{ active_model.training_date|date:"M d, Y" }} | Dataset: {{ active_model.dataset_start }} to {{ active_model.dataset_end }} ({{ active_model.num_records }} records)</p>
+            </div>
+            <div class="text-right">
+                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide bg-green-800 text-green-200 border border-green-600">
+                    Live in Production
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Model Versions Table -->
+    <div class="p-6 rounded-xl border bg-gray-800 border-gray-700 shadow-lg">
+        <h2 class="text-xl font-bold text-white mb-4">Available Model Versions</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-700">
+                <thead class="bg-gray-900/50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Version</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Algorithm</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Training Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Dataset Period</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Metrics</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-gray-800 divide-y divide-gray-700">
+                    {% for m in models_list %}
+                    <tr class="{% if m.is_active %}bg-green-900/10{% endif %}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{{ m.version_name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ m.algorithm }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ m.training_date|date:"M d, Y H:i" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ m.dataset_start }} to {{ m.dataset_end }}<br><span class="text-xs text-gray-500">({{ m.num_records }} records)</span></td>
+                        <td class="px-6 py-4 text-sm text-gray-300 max-w-xs truncate" title="{{ m.evaluation_metrics }}">{{ m.evaluation_metrics }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if m.is_active %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-300 border border-green-700">Active</span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300 border border-gray-600">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            {% if not m.is_active %}
+                                <form method="POST" action="{% url 'activate_model' m.id %}" onsubmit="return confirm('Are you sure you want to activate {{ m.version_name }}? This will deactivate the current model.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-xs font-medium rounded-md text-indigo-300 bg-indigo-900/50 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-800 transition-colors">
+                                        Activate
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="text-gray-500 text-xs italic">Current</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-400">No model versions registered yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
