@@ -9,6 +9,6 @@ urlpatterns = [
     path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='logout'),
     path('export/pdf/<int:record_id>/', views.export_prediction_pdf, name='export_prediction_pdf'),
-    path('admin/models/', views.model_management, name='model_management'),
-    path('admin/models/activate/<int:model_id>/', views.activate_model, name='activate_model'),
+    path('models/', views.model_management, name='model_management'),
+    path('models/activate/<int:model_id>/', views.activate_model, name='activate_model'),
 ]
